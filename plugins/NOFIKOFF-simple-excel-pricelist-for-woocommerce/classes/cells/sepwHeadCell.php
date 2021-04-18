@@ -20,15 +20,13 @@ class sepwHeadCell extends TextCell
         $sheet->getStyle($coord)->getFont()->setBold(true);
 
         //by Novikov 2019
-        if ($this->columnLetter($col) == 'A')
-            $sheet->getColumnDimension('A')->setWidth(17);
-        else
+        if ($this->columnLetter($col) === 'A') {
+            $sheet->getColumnDimension('A')->setWidth(17)->setAutosize(false);
+        } elseif ($this->columnLetter($col) === 'B') {
+            $sheet->getColumnDimension('B')->setWidth(140)->setAutosize(false);
+        } else {
             $sheet->getColumnDimension($this->columnLetter($col))->setAutosize(true);
-
-
-        // by Novikov
-        // $sheet->getColumnDimension($this->columnLetter($col))->setAutosize(true);
-
+        }
 
         $sheet->getStyle($coord)->getBorders()->getBottom()->setBorderStyle(Style\Border::BORDER_THIN);
         $sheet->getStyle($coord)->getBorders()->getRight()->setBorderStyle(Style\Border::BORDER_THIN);

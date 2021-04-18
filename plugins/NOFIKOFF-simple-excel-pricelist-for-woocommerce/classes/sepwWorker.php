@@ -12,7 +12,9 @@ use OnestExcelWriter\Worker as ExcelWorker;
 class sepwWorker extends sepwBootstrap
 {
 
-    const DEFAULT_COLS = array('thumbnail', 'SKU', 'name', 'price', 'stock');
+
+    // если в админке не выбрано
+    const DEFAULT_COLS = array('thumbnail', 'SKU', 'name', 'price', 'number', 'summ');
 
     /**
      * @var array
@@ -28,13 +30,27 @@ class sepwWorker extends sepwBootstrap
      * @var array
      */
     private $fields;
+    private $current_row;
+    private $kostyl_name_category_before;
+    private $kostyl_id_product_unique;
+    private $kostyl_category_not_empty;
+    private $kostyl_category_not_empty_last_product_row = 7;
+
+
+
+    private $max_number_columns;
+    // TODO автоматически рассчитывать день
+    private $last_number_columns = 'D';
+
+
+    private $sheet;
 
     public function __construct()
     {
         parent::__construct();
+        $this->max_number_columns = count($this->options['product_fields']);
 
-
-        $this->worker = new ExcelWorker(dirname(dirname(__FILE__)));
+        $this->worker = new ExcelWorker(dirname(__FILE__, 2));
 
         $this->handlers = array(
             new sepwHeadNameCell('head-name'),
@@ -71,10 +87,7 @@ class sepwWorker extends sepwBootstrap
         add_action('rest_api_init', array($this, 'rest_api_init'));
         add_shortcode('pricelist', array($this, 'pricelist_shortcode'));
 
-        //$this->fields = isset($this->options['product_fields']) ? $this->options['product_fields'] : self::DEFAULT_COLS;
-        $this->fields = ['thumbnail', 'SKU', 'name', 'price', 'number', 'summ'];
-
-
+        $this->fields = isset($this->options['product_fields']) ? $this->options['product_fields'] : self::DEFAULT_COLS;
     }
 
     public function generate_callback()
@@ -89,10 +102,9 @@ class sepwWorker extends sepwBootstrap
 
     private function generate()
     {
-        $sheet = $this->worker->sheet();
+        $this->sheet = $this->worker->sheet();
         //by Novikov 2019
-        //авто фильтры
-        $sheet->setAutoFilter('A4:F4');
+        $this->sheet->setAutoFilter('A4:' . $this->last_number_columns . '4');
 
 
 //        $products = wc_get_products(array(
@@ -103,10 +115,10 @@ class sepwWorker extends sepwBootstrap
 //            'stock_status' => 'instock',
 //        ));
 
-        $this->head($sheet);
-//        $this->body($sheet, $products);
+        $this->head();
+//        $this->body($this->sheet, $products);
         //by Novikov 2019
-        $this->body($sheet);
+        $this->body();
 
 
         //by Novikov 2019
@@ -123,90 +135,60 @@ class sepwWorker extends sepwBootstrap
         ));
     }
 
-    private function head($sheet)
+    private function head()
     {
+        $this->current_row = 1;
 
         //by Novikov 2019
-        $cell = $sheet->getCellByColumnAndRow(1, 1);
+        $cell = $this->sheet->getCellByColumnAndRow(1, $this->current_row);
         $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFont()->setBold(true);
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell->setValue('ТОВ "Меганом Україна" - кабель от производителя. Десятки тысяч наименований. Гибкий подход. Оперативная доставка<. Дата формирования прайса: ' . date('d/m/Y'));
+        $this->sheet->getStyle($coord)->getFont()->setBold(true);
+        //$this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        $cell->setValue('ТОВ "Меганом Україна" - кабель от производителя. Десятки тысяч наименований. Гибкий подход. Оперативная доставка. Дата формирования прайса: ' . date('d/m/Y'));
 
-        $cell = $sheet->getCellByColumnAndRow(2, 1);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(3, 1);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(4, 1);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(5, 1);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(6, 1);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
+        for ($i = 1; $i <= $this->max_number_columns; $i++) {
+            $cell = $this->sheet->getCellByColumnAndRow($i, $this->current_row);
+            $coord = $cell->getCoordinate();
+            $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        }
+        $this->current_row++;//2
 
         //by Novikov 2019
-        $cell = $sheet->getCellByColumnAndRow(1, 2);
+        $cell = $this->sheet->getCellByColumnAndRow(1, $this->current_row);
         $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFont()->setBold(true);
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        $this->sheet->getStyle($coord)->getFont()->setBold(true);
+//        $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
         $cell->setValue('б-р.Вацлава Гавела 8, м. Київ, +38 (044) 25 121 45, +38 (067) 56 54 402');
 
-        $cell = $sheet->getCellByColumnAndRow(2, 2);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(3, 2);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(4, 2);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(5, 2);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(6, 2);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        for ($i = 1; $i <= $this->max_number_columns; $i++) {
+            $cell = $this->sheet->getCellByColumnAndRow($i, $this->current_row);
+            $coord = $cell->getCoordinate();
+            $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        }
+        $this->current_row++;//3
 
         //by Novikov 2019
-        $cell = $sheet->getCellByColumnAndRow(1, 3);
+        $cell = $this->sheet->getCellByColumnAndRow(1, $this->current_row);
         $coord = $cell->getCoordinate();
-        //$sheet->getStyle($coord)->getFont()->setBold(true);
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        //$this->sheet->getStyle($coord)->getFont()->setBold(true);
+        //$this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
         $cell->setValue('contact@meganom.kiev.ua');
 
-        $cell = $sheet->getCellByColumnAndRow(2, 3);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(3, 3);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(4, 3);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(5, 3);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $cell = $sheet->getCellByColumnAndRow(6, 3);
-        $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        for ($i = 1; $i <= $this->max_number_columns; $i++) {
+            $cell = $this->sheet->getCellByColumnAndRow($i, $this->current_row);
+            $coord = $cell->getCoordinate();
+            $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        }
+        $this->current_row++;//4
 
-
-        // далее наполняем строку (кстати в начале метода - на эту строку вешаем автофиьлтры)
+        // далее наполняем строку (кстати в начале метода - на эту строку вешаем эксель автофиьлтры)
         $col = 1;
-        $row = 4;
-
 
         // выводим заголовки столбцев - это те у которых в slug head-xxxxxx
         foreach ($this->fields as $c) {
             foreach ($this->handlers as $h) {
                 if ($h->fits('head-' . $c)) {
-                    $h->write($sheet, $col, $row, NULL);
+                    $h->write($this->sheet, $col, $this->current_row, NULL);
                     break;
                 }
             }
@@ -215,11 +197,12 @@ class sepwWorker extends sepwBootstrap
     }
 
     //by Novikov
-    private function body($sheet)
+    private function body()
     {
 
         // by Novikov 2019
-        $row = 5;
+        // начинаем печатать с этой строки
+        $this->current_row = 5;
 
 
         // ЗАДАЧА В ПРАЙСЕ СГРУППИРОВАТЬ ЦЕНЫ ПО КАТЕГОРИЯМ
@@ -240,56 +223,28 @@ class sepwWorker extends sepwBootstrap
             'pad_counts' => $pad_counts,
             'hierarchical' => $hierarchical,
             'title_li' => $title,
-            'hide_empty' => $empty
+            'hide_empty' => $empty,
+            //'child_of' => 0, //всех потомков без исключения для этого ID
+            'parent' => 0, // только прямых потомков второго уровня для этого ID
         );
         $all_categories = get_categories($args);
 
-        /** ПЕРЕБИРАЕМ КАТЕГОРИИ */
+        /** ПЕРЕБИРАЕМ ВСЕ КАТЕГОРИИ - берем первого уровня $cat->category_parent == 0 */
         foreach ($all_categories as $cat) {
-            $category_slug = '';
+
+            /* второй уровень */
             if ($cat->category_parent == 0) {
-                //$category_id = $cat->term_id;
-                if ($cat->name != 'Uncategorized') {
-                    $category_slug = $cat->slug;
-
-                    $cell = $sheet->getCellByColumnAndRow(1, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
-                    $cell = $sheet->getCellByColumnAndRow(2, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
-
-                    $cell = $sheet->getCellByColumnAndRow(3, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFont()->setBold(true);
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-                    $sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
-                    $sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
-                    $cell->setValue($cat->name);
-
-                    $cell = $sheet->getCellByColumnAndRow(4, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
-                    $cell = $sheet->getCellByColumnAndRow(5, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
-                    $cell = $sheet->getCellByColumnAndRow(6, $row);
-                    $coord = $cell->getCoordinate();
-                    $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-
-
-                    $row++;
+                $category_id = $cat->term_id;
+                if ($cat->name !== 'Uncategorized') {
+                    // title Category
+                    $this->print_title_category($cat->name);
                 }
 
-                /* !!! ЕСЛИ ПОНАДОБЯТСЯ ПОДКАТЕГОРИИ
+                /* третий уровень TODO переписать на рекурсию без привязки к уровням */
                 $args2 = array(
                     'taxonomy' => $taxonomy,
-                    'child_of' => 0,
-                    'parent' => $category_id,
+                    'child_of' => $category_id, //всех потомков без исключения для этого ID
+                    //'parent' => 0, // только прямых потомков второго уровня для этого ID
                     'orderby' => $orderby,
                     'show_count' => $show_count,
                     'pad_counts' => $pad_counts,
@@ -297,77 +252,136 @@ class sepwWorker extends sepwBootstrap
                     'title_li' => $title,
                     'hide_empty' => $empty
                 );
+
                 $sub_cats = get_categories($args2);
                 if ($sub_cats) {
                     foreach ($sub_cats as $sub_category) {
-                        echo $sub_category->name . " <br>\n";
+                        //родительская и ниже второго уровня
+                        $this->print_title_category($cat->name);
+                        $this->print_title_category($sub_category->name);
+
+                        if ($sub_category->slug === '') continue;
+                        $this->print_row_products_by_cat_slug($sub_category->slug);
                     }
-                }*/
-            }
-
-            if ($category_slug == '') continue;
-            //
-            /** ДОСТАЕМ ПРОДУКТЫ ЭТОЙ КАТЕГОРИИ */
-            $products = wc_get_products(
-                [
-                    'status' => 'publish',
-                    'paginate' => false,
-                    //'numberposts' => -1,
-                    'numberposts' => 10,
-                    'category' => [$category_slug],
-                    'stock_status' => 'instock',
-                ]);
-
-            /** ПЕРЕБИРАЕМ ПРОДУКТЫ */
-            foreach ($products as $p) {
-                //
-                if ($p->is_type('variable')) {
-                    $this->simple_row($sheet, $row, $p);
-                    $row++;
-                    $variations = $p->get_available_variations();
-                    foreach ($variations as $v) {
-                        if ($v['variation_is_active'] && $v['variation_is_visible'] && $v['is_in_stock']) {
-                            $this->variable_row($sheet, $row, $p, $v);
-                            $row++;
-                        }
-                    }
-
-                } else {
-                    $this->simple_row($sheet, $row, $p);
-                    $row++;
                 }
             }
-//            break;
+
+            if ($cat->slug === '') continue;
+            $this->print_row_products_by_cat_slug($cat->slug);
+
+            //            break;
         }
 
-        // ИТОГО
+        // строка ИТОГО
 
-        $cell = $sheet->getCellByColumnAndRow(7, $row);
+        $cell = $this->sheet->getCellByColumnAndRow($this->max_number_columns - 2, $this->current_row);
         $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFont()->setBold(true);
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
-        $sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
+        $this->sheet->getStyle($coord)->getFont()->setBold(true);
+        //$this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        $this->sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_RIGHT);
+        $this->sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
         $cell->setValue('ИТОГО');
 
-        $cell = $sheet->getCellByColumnAndRow(6, $row);
+        $cell = $this->sheet->getCellByColumnAndRow($this->max_number_columns, $this->current_row);
         $coord = $cell->getCoordinate();
-        $sheet->getStyle($coord)->getFont()->setBold(true);
-        $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
-        $sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
-        $sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
-        $cell->setValue('=SUM(F6:F' . ($row - 1) . ')');
+        $this->sheet->getStyle($coord)->getFont()->setBold(true);
+        //$this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        $this->sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
+        $this->sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
+        $cell->setValue('=SUM(' . $this->last_number_columns . '' . $this->max_number_columns . ':' . $this->last_number_columns . '' . ($this->current_row - 1) . ')');
+
+        for ($i = 1; $i <= $this->max_number_columns; $i++) {
+            $cell = $this->sheet->getCellByColumnAndRow($i, $this->current_row);
+            $coord = $cell->getCoordinate();
+            $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        }
 
 
     }
 
-    private function simple_row($sheet, $row, $product)
+    private function print_title_category($cat_name)
+    {
+        // костыль
+        if ($this->kostyl_name_category_before === $cat_name) return;
+
+        $cell = $this->sheet->getCellByColumnAndRow(1, $this->current_row);
+        $coord = $cell->getCoordinate();
+        $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+
+        $cell = $this->sheet->getCellByColumnAndRow(2, $this->current_row);
+        $coord = $cell->getCoordinate();
+        $this->sheet->getStyle($coord)->getFont()->setBold(true);
+        $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        $this->sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
+        $this->sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
+        $cell->setValue($cat_name);
+
+        for ($i = 3; $i <= $this->max_number_columns; $i++) {
+            $cell = $this->sheet->getCellByColumnAndRow($i, $this->current_row);
+            $coord = $cell->getCoordinate();
+            $this->sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF66CC00');
+        }
+        $this->current_row++;
+        $this->kostyl_name_category_before = $cat_name;
+        $this->kostyl_category_not_empty = false;
+    }
+
+    private function print_row_products_by_cat_slug($category_slug)
+    {
+        //
+        /** ДОСТАЕМ ПРОДУКТЫ ЭТОЙ КАТЕГОРИИ */
+        $products = wc_get_products(
+            [
+                'status' => 'publish',
+                'paginate' => false,
+                'numberposts' => -1,
+                //'numberposts' => 10,
+                'category' => [$category_slug],
+                'stock_status' => 'instock',
+            ]);
+
+        /** ПЕРЕБИРАЕМ ПРОДУКТЫ */
+        foreach ($products as $p) {
+            //
+            if ($this->kostyl_id_product_unique[$p->get_id()]) continue;
+
+            if ($p->is_type('variable')) {
+                $this->simple_row($this->current_row, $p);
+                $this->current_row++;
+                $variations = $p->get_available_variations();
+                foreach ($variations as $v) {
+                    if ($v['variation_is_active'] && $v['variation_is_visible'] && $v['is_in_stock']) {
+                        $this->variable_row($this->current_row, $p, $v);
+                        $this->current_row++;
+
+                        $this->kostyl_category_not_empty = true;
+                        $this->kostyl_category_not_empty_last_product_row = $this->current_row;
+                    }
+                }
+
+            } else {
+                $this->simple_row($this->current_row, $p);
+                $this->current_row++;
+
+                $this->kostyl_category_not_empty = true;
+                $this->kostyl_category_not_empty_last_product_row = $this->current_row;
+            }
+
+            $this->kostyl_id_product_unique[$p->get_id()] = true;
+        }
+
+        // эта категория пустая возвращаем голову на последний хвост когда товары еще были
+        if (!$this->kostyl_category_not_empty) $this->current_row = $this->kostyl_category_not_empty_last_product_row;
+
+    }
+
+    private function simple_row($row, $product)
     {
         $col = 1;
         foreach ($this->fields as $c) {
             foreach ($this->handlers as $h) {
                 if ($h->fits('simple-' . $c)) {
-                    $h->write($sheet, $col, $row, $product);
+                    $h->write($this->sheet, $col, $row, $product);
                     break;
                 }
             }
@@ -375,13 +389,13 @@ class sepwWorker extends sepwBootstrap
         }
     }
 
-    private function variable_row($sheet, $row, $product, $variation)
+    private function variable_row($row, $product, $variation)
     {
         $col = 1;
         foreach ($this->fields as $c) {
             foreach ($this->handlers as $h) {
                 if ($h->fits('var-' . $c)) {
-                    $h->write($sheet, $col, $row, ['product' => $product, 'variation' => $variation]);
+                    $h->write($this->sheet, $col, $row, ['product' => $product, 'variation' => $variation]);
                     break;
                 }
             }

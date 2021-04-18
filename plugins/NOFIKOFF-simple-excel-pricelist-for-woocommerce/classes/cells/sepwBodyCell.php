@@ -16,7 +16,7 @@ class sepwBodyCell extends TextCell
         $cell = $sheet->getCellByColumnAndRow($col, $row);
         $coord = $cell->getCoordinate();
         $cell->setValue($this->value($p));
-        $sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle($coord)->getAlignment()->setHorizontal(Style\Alignment::HORIZONTAL_LEFT);
         $sheet->getStyle($coord)->getAlignment()->setVertical(Style\Alignment::VERTICAL_CENTER);
         if ($p->is_type('variable')) {
             $sheet->getStyle($coord)->getFill()->setFillType(Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEEEEEE');
@@ -40,7 +40,7 @@ class sepwBodyCell extends TextCell
             case 'simple-SKU':
             case 'var-SKU':
                 //return $p->get_sku();
-                return $p->ID;
+                return $p->get_id().'';
             case 'simple-name':
             case 'var-name':
                 return $p->get_name();
